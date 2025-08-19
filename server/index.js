@@ -1,17 +1,30 @@
-const ws = require('ws');
-const server = new ws.Server({ port: 3000 });
+import { createServer } from "http";
+import { Server } from "socket.io";
 
-console.log("✅ WebSocket server running on ws://localhost:3000");
+const httpServer = createServer();
 
-server.on('connection', socket => {
-    // Send a welcome message when client connects
-    socket.send("Welcome! You are connected to the server.");
+const io = new Server(httpServer, {
+    cors: {
+        origin: process.env.NODE_ENV === "production" 
+            ? "*" 
+            : ["http://localhost:5500"],
+    }
+});
 
-    // When the server receives a message
-    socket.on('message', message => {
-        console.log("📩 From client:", message.toString());
+io.on("connection", (socket) => {
+    console.log(`✅ User ${socket.id} connected`);
 
-        // Send the same message back
-        socket.send(`You said: ${message}`);
+    socket.on("message", (data) => {
+        console.log("📩 From client:", data);
+        // emit back to same client
+        socket.emit("message", `You said: ${data}`);
     });
+
+    socket.on("disconnect", () => {
+        console.log(`❌ User ${socket.id} disconnected`);
+    });
+});
+
+httpServer.listen(3500, () => {
+    console.log("✅ WebSocket server running on ws://localhost:3500");
 });
