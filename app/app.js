@@ -1,22 +1,25 @@
-const socket = io('ws://localhost:3500');
-//const socket = new WebSocket("ws://localhost:3000");
+const socket = io("ws://localhost:3500");
 
-function sendMessage(e){
+// 🟢 Form submit event
+function sendMessage(e) {
     e.preventDefault();
-    const input =document.querySelector('input')
-    if(input.value){
-        socket.emit('message', input.value)
-        input.value =""
+
+    const nameField = document.querySelector("#nameInput");
+    const msgField = document.querySelector("#messageInput");
+
+    if (nameField.value && msgField.value) {
+        // Emit object with name + message
+        socket.emit("message", { name: nameField.value, text: msgField.value });
+        msgField.value = ""; // clear only message field
     }
-    input.focus()
+    msgField.focus();
 }
 
-document.querySelector('form')
-    .addEventListener('submit', sendMessage);
+document.querySelector("form").addEventListener("submit", sendMessage);
 
-//Listen of messages
-socket.on('message',({data}) =>{
-    const li = document.createElement('li');
-    li.textContent = data;
-    document.querySelector('ul').appendChild(li);
-}) 
+// 🟢 Listen for messages from server
+socket.on("message", (msg) => {
+    const li = document.createElement("li");
+    li.textContent = `${msg.name}: ${msg.text}`;
+    document.querySelector("ul").appendChild(li);
+});
