@@ -1,21 +1,30 @@
-// Node.js built-in HTTP module එක import කරන්න අවශ්‍ය නෑ, 
-// Express එකෙන්ම server එක create කරනවා
+// ---------------------- IMPORTS ----------------------
+
+// Express framework import කරනවා (Node.js web server build කරන්න)
 import express from "express";
 
-// socket.io server import කරනවා
+// Socket.io server import කරනවා (Real-time communication සඳහා)
 import { Server } from "socket.io";
 
-// File path handle කරන්න path, fileURLToPath import කරනවා
+// File path handle කරන්න අවශ්‍ය imports
 import path from "path";
 import { fileURLToPath } from "url";
 
-// __filename සහ __dirname ES module වල use කරන්න
+// ---------------------- PATH SETUP ----------------------
+
+// __filename සහ __dirname ES Modules වල default නැති නිසා
+// ඒවා manual ලෙස හදාගන්නවා
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Port එක define කරනවා (Environment variable PORT use කරලා, 
-// නෑනම් default = 3500)
+// ---------------------- PORT ----------------------
+
+// Server එක run වෙන්න PORT එක set කරනවා
+// Environment variable PORT තිබුනොත් ඒක use කරනවා
+// නැත්නම් default = 3500
 const PORT = process.env.PORT || 3500;
+
+// ---------------------- EXPRESS APP ----------------------
 
 // Express app එක create කරනවා
 const app = express();
@@ -28,39 +37,58 @@ const expressServer = app.listen(PORT, () => {
   console.log(`🚀 HTTP server running on port ${PORT}`);
 });
 
-// Socket.io server එක initialize කරනවා (Express server එකට attach කරලා)
+// ---------------------- SOCKET.IO SERVER ----------------------
+
+// Socket.IO server එක Express server එකට attach කරනවා
 const io = new Server(expressServer, {
   cors: {
-    // 🟢 Production environment එකේදි (Deploy කල පසු) 
-    // Origins allow කරන්නෙ නෑ (false)
+    // Production එකේදි origins allow කරන්නෙ නෑ
     origin: process.env.NODE_ENV === "production"
       ? false
-      // 🟢 Development එකේදි localhost වලින් connect වෙන්න ඉඩ දෙන්න
+      // Development එකේදි localhost වලින් connect වෙන්න ඉඩ දෙන්න
       : ["http://localhost:5500", "http://127.0.0.1:5500"],
   },
 });
 
-// 🟢 Client එක server එකට connect උනාම trigger වෙනවා
+// ---------------------- SOCKET.IO EVENTS ----------------------
+
+// 🟢 Client එක connect උනොත්
 io.on("connection", (socket) => {
   console.log(`✅ User ${socket.id} connected`);
 
-  // 🟢 Server එක client එකෙන් එන "message" event එක listen කරනවා
+  // 🟢 Welcome message එක නව client එකටම යවයි
+  socket.emit("message", "Welcome to the chat!");
+
+  // 🟢 අලුත් user එක join උන බව connected වෙන අනිත් clients ට කියනවා
+  socket.broadcast.emit(
+    "message",
+    `User ${socket.id.substring(0, 5)} has joined the chat`
+  );
+
+  // 🟢 Client එක "activity" emit කලොත් (typing indicator)
+  socket.on("activity", (data) => {
+    console.log("🟢 User is typing:", data);
+
+    // අනිත් clients ට "user is typing..." කියලා කියනවා
+    socket.broadcast.emit("activity", `${socket.id.substring(0, 5)} is typing...`);
+  });
+
+  // 🟢 Client එක "message" emit කලොත්
   socket.on("message", (data) => {
     console.log("📩 From client:", data);
 
-    // ---------------------- IMPORTANT ----------------------
-    // socket.emit("msg")      → sender ට (එක browser එකටම) යවයි
-    // socket.broadcast.emit() → sender හැර අනිත් clients ට යවයි
-    // io.emit("msg")          → සෑම connected client එකකටම යවයි ✅
-    // -------------------------------------------------------
-
-    // 🟢 එක client එකක් msg යවද්දි connected වෙලා තියෙන 
-    //    සියලුම clients ට emit කරනවා
+    // සියලුම connected clients ට message එක යවයි
     io.emit("message", data);
   });
 
-  // 🟢 Client එක disconnect උනාම trigger වෙනවා
+  // 🟢 Client එක disconnect උනොත්
   socket.on("disconnect", () => {
     console.log(`❌ User ${socket.id} disconnected`);
+
+    // අනිත් clients ට කියනවා user එක left වුනා කියලා
+    socket.broadcast.emit(
+      "message",
+      `User ${socket.id.substring(0, 5)} has left the chat`
+    );
   });
 });

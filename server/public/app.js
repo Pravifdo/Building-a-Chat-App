@@ -1,25 +1,47 @@
+// Socket.IO server එකට connect වෙනවා
 const socket = io("ws://localhost:3500");
 
-// 🟢 Form submit event
+// DOM element selection
+const activity = document.querySelector(".activity");
+const msgInput = document.querySelector("#messageInput");
+const nameInput = document.querySelector("#nameInput");
+const chatList = document.querySelector("ul");
+
+// 🟢 Message send function
 function sendMessage(e) {
-    e.preventDefault();
+    e.preventDefault(); // page reload prevent
 
-    const nameField = document.querySelector("#nameInput");
-    const msgField = document.querySelector("#messageInput");
+    if (msgInput.value && nameInput.value) {
+        socket.emit("message", {
+            name: nameInput.value,
+            text: msgInput.value
+        });
 
-    if (nameField.value && msgField.value) {
-        // Emit object with name + message
-        socket.emit("message", { name: nameField.value, text: msgField.value });
-        msgField.value = ""; // clear only message field
+        msgInput.value = "";
+        msgInput.focus();
     }
-    msgField.focus();
 }
 
+// form submit attach
 document.querySelector("form").addEventListener("submit", sendMessage);
 
-// 🟢 Listen for messages from server
+// 🟢 Receive message from server
 socket.on("message", (msg) => {
+    activity.textContent = ""; // typing indicator clear
+
     const li = document.createElement("li");
     li.textContent = `${msg.name}: ${msg.text}`;
-    document.querySelector("ul").appendChild(li);
+    chatList.appendChild(li);
+});
+
+// 🟢 Typing activity
+msgInput.addEventListener('keypress', () => {
+    if (nameInput.value) {
+        socket.emit('activity', nameInput.value);
+    }
+});
+
+// 🟢 Receive typing activity
+socket.on('activity', (name) => {
+    activity.textContent = `${name} is typing...`;
 });
